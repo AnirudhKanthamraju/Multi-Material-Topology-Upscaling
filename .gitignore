@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.v/
+venv/
+env/
+.env
+
+# Datasets & Zip files (Thesis specific)
+*.zip
+*.7z
+*.rar
+
+# Output & Plots
+output/*
+
+
+# Microsoft Office & Thesis Documentation
+*.docx
+*.xlsx
+~$*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+
+# Old network files
+Network.py
+training.py
+
+# other multi top codes 
+multitop_basecode_name_modulus_150x75.m
+miltitop3.m
+*.m
+
+
+
+# 3d versions of 2d topology optimization
+src/top99_3d.py
+src/multitop_3d.py

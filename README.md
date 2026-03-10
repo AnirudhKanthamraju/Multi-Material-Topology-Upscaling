@@ -1,113 +1,132 @@
-# 2D Multi-Material Topology Optimisation
+# 🧠 Topology Optimisation: Mesh-Invariant Upscaling using Fourier Neural Operators
 
-This repository is dedicated to reproducing the datasets and baseline models described in my thesis work. It provides a Python-based framework for 2D Topology Optimisation (TopOpt), implementing both classical single-material optimization and advanced multi-material optimization algorithms.
+<div align="center">
+  <em>Accelerating structural engineering algorithms while preserving strict adherence to physical laws.</em>
+</div>
+<br>
 
----
+This repository provides a Python-based framework for 2D **Topology Optimisation (TopOpt)**, featuring classical mathematical solvers alongside a **deep learning pipeline** leveraging **Fourier Neural Operators (FNOs)**. 
 
-## 🚀 Capabilities
-
-The codebase provides traditional mathematical solvers for structural engineering problems, aiming to maximize stiffness (minimize compliance) for a given amount of material. These solvers act as the ground truth for our dataset generation.
-
-*   **Single-Material Optimization**: A faithful Python port of Sigmund's classic 99-line SIMP code.
-*   **Multi-Material Optimization**: Implementation of the "Alternating Active-Phase" algorithm, allowing for designs using multiple materials (e.g., stiff, medium, soft) alongside void space.
-*   **Integrated FEM Solver**: Optimized 2D Finite Element Method (FEM) solver using `scipy.sparse` for rapid equilibrium calculations.
-*   **Interactive Visualisation**: Real-time plotting of the optimization process and material distribution.
+The primary objective is to drastically accelerate the generation of optimal multi-material geometries while circumventing the grid-resolution limitations of traditional computer vision models.
 
 ---
+## � Codebase Structure
 
-## 📂 Codebase Structure
-
-The repository focuses purely on the 2D solvers to generate and validate training data:
+The repository is modularized into core mathematical solvers and deep learning models:
 
 ```text
-├── src/                        # Core Solvers & Utilities
+├── models/                     # Deep Learning Architecture
+│   ├── fno.py                  # Fourier Neural Operator (FNO) Definition
+│   └── <model_name>/           # Auto-generated workspaces for train runs (config, weights)
+├── src/                        # Core Mathematical Solvers (Ground Truth)
 │   ├── top99_2d.py             # 2D Single-Material (SIMP) Solver
 │   ├── multitop_2d.py          # 2D Multi-Material (Alternating Phase) Solver
 │   ├── FEM_models.py           # Shared FEM & Filter logic (Assembly, Stiffness)
 │   └── visualisation.py        # Plotting utilities for 2D structures
-├── assets/                     # Images and dataset examples
-├── requirements.txt            # Python dependencies
-├── .gitignore                  # Git ignore rules (excluding 3D and legacy network files)
-└── README.md                   # Project documentation
+├── assets/                     # Images and benchmark visualisations
+├── train_model.py              # Central script to train neural operators
+├── eval_model.py               # Evaluation script for metrics & inference
+└── requirements.txt            # Python dependencies
 ```
+
+## 🏗️ What is Topology Optimisation?
+
+At its core, Topology Optimisation is a mathematical method that distributes material within a given design space, subject to applied loads and boundary conditions and a target volume fraction of the material. The goal is to maximize the performance of a structure (e.g., maximizing stiffness). 
+
+Traditionally, algorithms iteratively "carve" and solve computationally expensive Finite Element Method (FEM) equations. As grid resolutions scale, these traditional algorithms suffer from profound computational bottlenecks.
 
 ---
 
-## 🛠️ Usage Examples   
+---
 
-### 1. Single-Material Optimization
-Use this to find the optimal shape for a single solid material within a defined space.
+## 📉 The Roadblock: Image-Based Upscaling (Thesis Limitations)
+
+My initial [master's thesis research](https://hal.science/hal-03717882/document) sought to replace the expensive classical solvers by treating optimal geometries as standard 2D images, training Generative Adversarial Networks (GANs) to predict higher-resolution structural outcomes from low-resolution approximations.
+
+**The Limitations:**
+Conventional Convolutions (CNNs/GANs) are fundamentally tied to discrete pixel grids. Despite generating outputs with reasonable *perceptual* geometry, the structures suffered from:
+1. **Severe noise** (Incoherent Material Distribution).
+2. **Failure to Generalise** (models when trained on composite datasets containing solutions from two boundary conditions ( i.e. cantilevers and Supported Beams) failed to provide descernable solution).
+
+<div align="center">
+  <img src="assets/experiment1%20outputs.png" alt="Exp Upscaling Cantilevers on 40x20 grid to 80x40" width="700"/>
+  <br>
+  <em>SR-GAN outputs: Visually structured, but mechanically flawed.</em>
+</div>
+<div align="center">
+  <img src="assets/experiment3%20outputs.png" alt="Exp Upscaling Cantilevers and Simply Supported Beam on 40x20 grid to 80x40" width="700"/>
+  <br>
+  <em>SR-GAN outputs: Visually structured, but mechanically flawed.</em>
+</div>
+
+---
+
+## 🚀 The Solution: Fourier Neural Operators (FNO)
+
+To overcome the problems of pixel-bound networks, this codebase shifts the paradigm to **Operator Learning**.
+
+Instead of learning a mapping between fixed pixel matrices, **Fourier Neural Operators** learn to map between infinite-dimensional continuous function spaces. 
+
+### Why FNOs for Structural Integrity?
+- **True Mesh-Invariance:** By evaluating weights in the continuous Fourier domain, the network inherently understands the PDE. We can train the architecture on a computationally cheap low-resolution mesh (e.g., `40x20`) and directly evaluate it on a massive high-resolution mesh (e.g., `100x50`) **zero-shot**, natively circumventing the scaling issues of standard GANs.
+- **Noise Remediation:** Truncating high-frequency noise modes during the Fast Fourier Transform mathematically forces the network to learn smooth, structurally contiguous solutions.
+
+---
+
+## 💻 FNO Upscaling Pipeline
+
+The repository ships with an end-to-end automated FNO training and evaluation framework specifically adapted to `nelx × nely` (width × height) FEM coordinate conventions. 
+
+### 1. Training (`train_model.py`)
+Provides an automated pipeline for paired geometry learning:
+- **Auto-Splitting:** Automatically matches input and target datasets, partitioning them blindly into a strict `80/20` train-test division to ensure valid metrics.
+- **Model Workspaces:** Passing `--model_name my_fno` isolates checkpoints, loss curves, and generates a dynamic `config.json` containing the precise neural architecture.
 
 ```bash
-# Run with default settings (60x20 cantilever beam)
-python src/top99_2d.py
-
-# Run with custom mesh size and volume fraction (40% material)
-python src/top99_2d.py --nelx 80 --nely 40 --volfrac 0.4
+# Example: Train a base FNO model
+python train_model.py \
+    --model_name fno_base \
+    --data_in_dir ./CNT_40x20/CNT_40x20 \
+    --data_out_dir ./CNT_80X40/CNT_80X40 \
+    --data_val_dir ./CNT_100x50/CNT_100x50 \
+    --batch_size 8 \
+    --epochs 60
 ```
 
-### 2. Multi-Material Optimization
-Use this to distribute multiple distinct materials (stiffest to softest) across a structure.
+### 2. Evaluation & Inference (`eval_model.py`)
+Dynamically reinstantiates models based on their configuration signature.
+
+- **Batch Benchmarking:** Evaluate the final model against the unseen 20% validation split, computing strict pixel-wise Mean Squared Errors (MSE) against continuous predictions.
+- **Zero-Shot Inference:** Provide a singular low-resolution PNG and explicitly declare a continuous target geometry (e.g., `--target_res 100 50`) and watch the model instantly solve the upscaling PDE dynamically.
 
 ```bash
-# Run with default 4-phase optimization (3 materials + void)
-python src/multitop_2d.py
-
-# Run with a custom 100x50 mesh and increased iterations
-python src/multitop_2d.py --nx 100 --ny 50 --maxiter 300
+# Example: Zero-shot mesh upscaling from 40x20 to 100x50
+python eval_model.py \
+    --model_name fno_base \
+    --input_image ./CNT_40x20/CNT_40x20/125.png \
+    --target_res 100 50
 ```
 
 ---
 
-## 📚 References
+## 🧮 Classical Solvers (Ground Truth Generators)
 
-The algorithms implemented in this codebase are based on the following foundational papers:
+To build robust training data, the codebase includes traditional TopOpt mathematical solvers integrating purely with `scipy.sparse`. 
 
-1. **99-Line Code (Single Material):** 
-   Sigmund, O. (2001). *A 99 line topology optimization code written in Matlab*. Structural and Multidisciplinary Optimization, 21(2), 120-127.
-2. **Multi-Material Code:**
-   Tavakoli, R., & Mohseni, S. M. (2014). *Alternating active-phase algorithm for multimaterial topology optimization problems: a 115-line MATLAB implementation*. Structural and Multidisciplinary Optimization, 49(4), 621-642.
-3. **Author's Related Work:**
-   Kanthamraju, A., Duriez, E., James, K., & Morlier, J. (2022). *Upscaling optimal topology multimaterials structures using Deep Neural Networks*. CSMA 2022 - 15ème Colloque National en Calcul des Structures. [⟨hal-03693236⟩](https://hal.science/hal-03717882/)
+*   **Single-Material Optimization**: Python port of Sigmund's classic 99-line SIMP code (`src/top99_2d.py`).
+*   **Multi-Material Optimization**: Implementation of the "Alternating Active-Phase" solver for distinct phases + void space (`src/multitop_2d.py`).
 
 ---
 
-## ⚠️ Limitations: Upscaling Topologies using Image Processing
+## 🎯 Future Work & Outlook
 
+The transition to Fourier Neural Operators explicitly solves the resolution constraints of classical ML in the TopOpt problem setups. 
 
+The next frontier for this codebase will explore combining **Latent Diffusion Models** heavily guided by pre-trained FNO / DeepONet physics discriminators. By utilizing diffusion to handle the generative "creativity" and the continuous Operator Learning network acting as a rigorous physics-informed loss function, we aim to match the exact mechanics of traditional iterative solvers at orders of magnitude higher speed.
 
-Previous implementations using Generative Adversarial Networks (GANs) tained on image nets struggled to consistently produce physically viable structures. Despite perceptually generating seemingly optimal topologies, the outputs have serious noise leading for currently un-usuble outputs. 
+***
 
-<p align="center">
-  <img src="assets/experiment1%20outputs.png" alt="Exp 1 Upscaling Cantilevers on 40x20 grid" width="800"/>
-  <br>
-  <em>Experiment 1: Upscaling Cantilevers on a 40x20 grid</em>
-</p>
-
-<p align="center">
-  <img src="assets/experiment2%20outputs.png" alt="Exp 2 Upscaling Cantilevers on 100x50 grid" width="800"/>
-  <br>
-  <em>Experiment 2: Upscaling Cantilevers on a 100x50 grid</em>
-</p>
-
-<p align="center">
-  <img src="assets/experiment3%20outputs.png" alt="Exp 3 Upscaling mix of MBB and Cantilevers on 40x20 grid" width="800"/>
-  <br>
-  <em>Experiment 3: Upscaling mix of MBB and Cantilevers on a 40x20 grid</em>
-</p>
-
----
-
-## 🎯 Conclusion & Future Work
-
-The overarching goal is to dramatically accelerate optimal topology generation while maintaining strict adherence to physical laws. While previous purely image-based GANs fell short, the new approach embraces physics-informed deep learning and generative diffusion models.
-
-**Next Steps & Theoretical Foundation:**
-
-1. **Integrating Fourier Neural Operators (FNO) / DeepONets:**
-   Instead of struggling to learn discretized pixel grids, the next architecture will leverage **Operator Learning**. As highlighted in Li et al.'s [Fourier Neural Operator research](https://zongyi-li.github.io/blog/2020/fourier-pde/), FNOs learn the *continuous*, resolution-invariant solution operator for PDE families. By constructing mesh-independent operators, we can achieve zero-shot super-resolution: models trained on a lower resolution can be directly evaluated on a higher resolution, accelerating complex PDE solutions by up to 1000x compared to traditional solvers. We will also explore state-of-the-art developments in foundation models for PDEs (e.g., [arXiv:2512.01421](https://arxiv.org/abs/2512.01421)).
-
-2. **Latent Diffusion Models for Topology Generation:**
-   Conventional iterative Topology Optimisation models (like SIMP) start uniformly or from a completely noisy input and slowly "carve out" an optimal design iterative step by iterative step. This maps perfectly onto the mathematical framework of [Latent Diffusion Models](https://github.com/CompVis/latent-diffusion). The future work will use stable diffusion processes guided by DeepONets. Instead of blindly generating images, the diffusion model will iteratively refine pure noise into structurally sound, optimal designs, relying on the pre-trained FNOs to act as a surrogate precision loss function.
-
-This hybrid approach expects to effectively blend the iterative generative creativity of diffusion models with the strict, governing physical precision of traditional FEM solvers. 
+### References
+1. **FNO Theory:** Li et al. (2020), *Fourier Neural Operator for Parametric Partial Differential Equations*.
+2. **Classic SIMP:** Sigmund, O. (2001). *A 99 line topology optimization code written in Matlab*. 
+3. **Multi-Phase:** Tavakoli, R., & Mohseni, S. M. (2014). *Alternating active-phase algorithm for multimaterial topology optimization problems*.

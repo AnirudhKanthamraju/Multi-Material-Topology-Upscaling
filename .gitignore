@@ -8,11 +8,14 @@ __pycache__/
 venv/
 env/
 .env
+.venv/
 
 # Datasets & Zip files (Thesis specific)
 *.zip
 *.7z
 *.rar
+
+CNT_200x100/
 
 # Output & Plots
 output/*
@@ -37,7 +40,16 @@ multitop_basecode_name_modulus_150x75.m
 miltitop3.m
 *.m
 
+# Test models 
 
+models/__pycache__/
+models/fno_color_test/
+models/fno_dry_test/
+models/fno_dry_test/
+models/fno_test_loss/
+models/fno_v1
+models/my_fno_model_1_trial
+models/weights
 
 # 3d versions of 2d topology optimization
 src/top99_3d.py

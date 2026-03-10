@@ -1,0 +1,16 @@
+python train_model.py --model_name "fno_small" --data_in_dir ./CNT_40x20/CNT_40x20 --data_out_dir ./CNT_80X40/CNT_80X40 --data_val_dir ./CNT_100x50/CNT_100x50 --modes1 8 --modes2 8 --width 16 --batch_size 25 --epochs 1000 --save_every 50
+
+python eval_model.py --model_name "fno_small" --input_image ./CNT_40x20/CNT_40x20/125.jpg --target_res 100 50
+
+
+python train_model.py --model_name "fno_medium" --data_in_dir ./CNT_40x20/CNT_40x20 --data_out_dir ./CNT_80X40/CNT_80X40 --data_val_dir ./CNT_100x50/CNT_100x50 --modes1 12 --modes2 12 --width 32 --batch_size 8 --epochs 1000 --save_every 50
+
+python eval_model.py --model_name "fno_medium" --input_image ./CNT_40x20/CNT_40x20/125.jpg --target_res 100 50
+
+
+python train_model.py --model_name "fno_large" --data_in_dir ./CNT_40x20/CNT_40x20 --data_out_dir ./CNT_80X40/CNT_80X40 --data_val_dir ./CNT_100x50/CNT_100x50 --modes1 16 --modes2 18 --width 64 --batch_size 4 --epochs 600 --save_every 50
+
+
+python eval_model.py --model_name "fno_large" --input_image ./CNT_40x20/CNT_40x20/125.jpg --target_res 100 50
+
+

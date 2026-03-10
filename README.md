@@ -109,6 +109,21 @@ python eval_model.py \
 
 ---
 
+### 🌟 FNO Upscaling Results
+
+The following comparisons demonstrate the zero-shot upscaling capabilities of the FNO model. The model receives a mathematically cheap low-resolution input (`40x20`) and directly maps it to the continuous, high-resolution geometry (`100x50`), closely approximating the computationally expensive ground truth.
+
+<div align="center">
+
+| | **Low-Res Input** (40x20) | **FNO Upscaled** (100x50) | **Ground Truth** (100x50) |
+|:---:|:---:|:---:|:---:|
+| **Topology 128** | <img src="CNT_40x20/CNT_40x20/128.jpg" height="150"/> | <img src="assets/128_fno_large_upscaled_100x50.png" height="150"/> | <img src="CNT_100x50/CNT_100x50/128.jpg" height="150"/> |
+| **Topology 250** | <img src="CNT_40x20/CNT_40x20/250.jpg" height="150"/> | <img src="assets/250_fno_large_upscaled_100x50.png" height="150"/> | <img src="CNT_100x50/CNT_100x50/250.jpg" height="150"/> |
+
+</div>
+
+---
+
 ## 🧮 Classical Solvers (Ground Truth Generators)
 
 To build robust training data, the codebase includes traditional TopOpt mathematical solvers integrating purely with `scipy.sparse`. 
